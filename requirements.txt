@@ -1,0 +1,8 @@
+# Wallet Finder - runtime needs only a GUI toolkit; all crypto is pure-python stdlib.
+customtkinter>=5.2
+# 'mnemonic' is used ONLY by the test-fixture generator (not by the app itself).
+mnemonic>=0.20
+# Optional: deeper filesystem walking of images incl. deleted entries.
+# pytsk3        # optional, not required
+# Build tooling (optional):
+# pyinstaller>=6.0

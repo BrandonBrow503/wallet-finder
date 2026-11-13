@@ -1,0 +1,45 @@
+name: Build Windows exe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          architecture: x64
+      - name: Install deps
+        run: python -m pip install customtkinter mnemonic pytest pyinstaller
+      - name: Run tests
+        run: python -m pytest -q tests
+      - name: Build exe
+        run: >
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name WalletFinder
+          --collect-data customtkinter
+          --add-data "walletfinder/data/bip39_english.txt;walletfinder/data"
+          --hidden-import tkinter main.py
+      - name: Self-test the built exe
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath dist\WalletFinder.exe -ArgumentList "--selftest" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "selftest failed: $($p.ExitCode)" }
+          Write-Host "selftest exit code 0"
+      - name: Smoke-launch GUI (must stay running 15s)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath dist\WalletFinder.exe -PassThru
+          Start-Sleep -Seconds 15
+          if ($p.HasExited) { throw "GUI exited early with code $($p.ExitCode)" }
+          Write-Host "GUI still running after 15s (pid $($p.Id)); stopping it."
+          Get-Process WalletFinder -ErrorAction SilentlyContinue | Stop-Process -Force
+      - name: SHA256
+        shell: pwsh
+        run: Get-FileHash dist\WalletFinder.exe -Algorithm SHA256 | Format-List
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WalletFinder-windows
+          path: dist/WalletFinder.exe
